@@ -1,0 +1,24 @@
+services:
+  pluto-build:
+    build:
+      context: .
+      dockerfile: pluto-fw.Dockerfile
+
+    container_name: pluto_fw_builder
+    hostname: ubuntu
+    volumes:
+
+      # plutosdr-fw repo & External Xilinx
+      - ./plutosdr-fw:/home/builder/plutosdr-fw
+      - /opt/Xilinx:/xilinx
+
+      # Git & SSH configs (corrected for builder)
+      - $HOME/.gitconfig:/home/builder/.gitconfig:ro
+      - $HOME/.ssh:/home/builder/.ssh
+
+    environment:
+      - VIVADO_SETTINGS=/xilinx/Vivado/2023.2/settings64.sh
+
+    tty: true
+    stdin_open: true
+    working_dir: /home/builder/plutosdr-fw
