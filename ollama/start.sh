@@ -5,7 +5,7 @@ set -e
 SERVICE=${1:-ollama}
 
 echo "[+] Docker Compose başlatılıyor..."
-# docker compose up -d --build
+docker compose up -d
 
 echo "[+] $SERVICE container'ı bekleniyor..."
 until docker ps | grep -q "$SERVICE"; do

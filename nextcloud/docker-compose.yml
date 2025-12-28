@@ -1,0 +1,99 @@
+# Docker Compose for Nextcloud - Test Environment
+# Optimized for testing purposes, not for production use
+
+services:
+  # PostgreSQL Database
+  nextcloud-db:
+    image: postgres:15-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    networks:
+      - llm-net
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: nextcloud_test_pass  # Change for production!
+    volumes:
+      - nextcloud-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  nextcloud-redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    networks:
+      - llm-net
+    command: redis-server --requirepass redis_test_pass  # Change for production!
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nextcloud Application
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    restart: unless-stopped
+    networks:
+      - llm-net
+    ports:
+      - "8080:80"
+    environment:
+      # Database Configuration
+      POSTGRES_HOST: nextcloud-db
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: nextcloud_test_pass
+      
+      # Redis Configuration
+      REDIS_HOST: nextcloud-redis
+      REDIS_HOST_PASSWORD: redis_test_pass
+      
+      # Admin Account (Auto-setup)
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: admin_test_pass  # Change for production!
+      
+      # Trusted Domains (for testing)
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost 127.0.0.1
+      
+      # Performance Settings (Test Environment)
+      PHP_MEMORY_LIMIT: 512M
+      PHP_UPLOAD_LIMIT: 512M
+      
+      # Development/Test Mode
+      NEXTCLOUD_UPDATE: 1
+      OVERWRITEPROTOCOL: http  # Use https in production
+    volumes:
+      - nextcloud-data:/var/www/html
+      - ./data:/var/www/html/data
+      - ./config:/var/www/html/config
+      - ./custom_apps:/var/www/html/custom_apps
+    depends_on:
+      nextcloud-db:
+        condition: service_healthy
+      nextcloud-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/status.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+# Named Volumes for Database and Application
+volumes:
+  nextcloud-db-data:
+    driver: local
+  nextcloud-data:
+    driver: local
+
+# External Network
+networks:
+  llm-net:
+    external: true
